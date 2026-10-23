@@ -49,3 +49,7 @@ Automatische Analyse vergleicht ausschließlich angenommene Angebote. Muss-Verst
 Schemaerweiterung: drizzle/0001_sticky_sandman.sql ergänzt settings; lokale Migration ist angewandt. Vorhandene Angebote bleiben erhalten, neue Suchfunde erhalten stage=inbox. deleted/dismissed sind reversible Zustände. Deployment weiter nicht abgeschlossen; lokale Vorschau und GitHub-Sicherung sind der geprüfte Stand.
 
 Verifiziert: Profil-Persistenz, dynamischer Radius und Mindestgröße, Eingang/Annahme-Trennung, Umbenennen, Entfernen und Wiederherstellen, Import-Speichern mit anschließend leerem Feld, Rechtsklick und Vergleich/Fazit im Browser. Echte Websuche durchgeführt. Eine ursprüngliche Fehllesung von Quartalsfallzahlen als Raumzahl wurde korrigiert und die neu gefundenen Einträge erneut geprüft. Temporäre QA-Angebote wurden entfernt.
+
+## PDF-Kompatibilitätskorrektur
+
+Der eingebettete WebKit-Browser kann ReadableStream.getReader unterstützen, aber dessen AsyncIterator nicht. PDF.js getTextContent nutzt intern for-await und verursachte deshalb „undefined is not a function … value of readableStream“. lib/pdf-text.ts liest den öffentlichen Textstream nun direkt über getReader/read und gibt den Reader auch bei Fehlern frei. Der Dateiimport verwendet diesen Weg. Geprüft mit fehlendem AsyncIterator, mehreren Textblöcken und Reader-Fehlern sowie mit einer echten Test-PDF (scripts/check-pdf-file.mjs <Testdatei>).

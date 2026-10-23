@@ -1,0 +1,11 @@
+import fs from 'node:fs';import ts from 'typescript';import assert from 'node:assert/strict';
+const source=ts.transpileModule(fs.readFileSync('lib/pdf-text.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
+const {readPdfText}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+const stream=new ReadableStream({start(c){c.enqueue({items:[{str:'6 Behandlungszimmer',hasEOL:true}]});c.enqueue({items:[{str:'Kaufpreis: 750.000 €'}]});c.close()}});
+Object.defineProperty(stream,Symbol.asyncIterator,{value:undefined});
+assert.equal(typeof stream[Symbol.asyncIterator],'undefined');
+const result=await readPdfText({streamTextContent:()=>stream});
+assert.equal(result.items.length,2);assert.equal(result.items[0].str,'6 Behandlungszimmer');assert.equal(stream.locked,false);
+const broken=new ReadableStream({start(c){c.error(new Error('PDF-Lesefehler'))}});
+await assert.rejects(()=>readPdfText({streamTextContent:()=>broken}),/PDF-Lesefehler/);assert.equal(broken.locked,false);
+console.log('PASS: PDF-Text ohne ReadableStream-AsyncIterator; mehrere Textblöcke und Freigabe des Readers bei Fehler');
