@@ -53,3 +53,15 @@ Verifiziert: Profil-Persistenz, dynamischer Radius und Mindestgröße, Eingang/A
 ## PDF-Kompatibilitätskorrektur
 
 Der eingebettete WebKit-Browser kann ReadableStream.getReader unterstützen, aber dessen AsyncIterator nicht. PDF.js getTextContent nutzt intern for-await und verursachte deshalb „undefined is not a function … value of readableStream“. lib/pdf-text.ts liest den öffentlichen Textstream nun direkt über getReader/read und gibt den Reader auch bei Fehlern frei. Der Dateiimport verwendet diesen Weg. Geprüft mit fehlendem AsyncIterator, mehreren Textblöcken und Reader-Fehlern sowie mit einer echten Test-PDF (scripts/check-pdf-file.mjs <Testdatei>).
+
+## Anpassbare Tabelle, Ranking-Begründungen und Suchquellen
+
+Nach erfolgreicher Erkennung werden Datei-/Link-/Texteingabe geleert; die Ergebnisvorschau bleibt bis zum Speichern erhalten. „Angebot automatisch erkennen“ ist ohne neue Eingabe unsichtbar. Bei Fehlern bleibt die Eingabe zum Wiederholen erhalten.
+
+Die Tabelle startet mit Muss-Vorgaben, danach Kriterien nach den gespeicherten Gewichten. „Zeilen anpassen“ aktiviert Drag-and-drop sowie tastaturbedienbare Hoch-/Runter-Pfeile. Eigene Zeilenreihenfolge wird gerätelokal gespeichert und lässt sich über „Nach Wichtigkeit“ zurücksetzen; A–Z und Angebotssortierung nach Preis, Gewinn und Räumen sind ebenfalls verfügbar. Die fachliche Rangfolge wird durch eine bloße Tabellenansicht nicht verändert.
+
+Jeder Rang enthält eine aufklappbare Begründung: erfüllte Vorgaben, Ausschlüsse, Vor-/Nachteile, offene Daten und die zugrunde liegenden Kriterien-Scores. Das ⋯-Aktionsmenü öffnet und schließt sich per Linksklick; Klicks auf den Menüknopf werden vom Außenklick-Handler ausgenommen.
+
+„Suchquellen bearbeiten“ im Suchprofil ermöglicht Hinzufügen, Ändern und Entfernen von bis zu 20 öffentlichen Quellen. sources wird im bestehenden Profile-JSON gespeichert; ältere Profile erhalten die bisherigen Quellen als Voreinstellung. Web-Suchanfragen und Kandidatenfilter sind auf die ausgewählten Quell-Domains beschränkt. Freie Quellen verwenden dieselbe öffentliche DNS-, Weiterleitungs-, Zeit- und Größenprüfung wie der Angebotsimport. Websites mit Anmeldung, Anti-Bot-Schutz oder rein dynamischen Inhalten können weiterhin nicht auslesbar sein; Lücken werden protokolliert.
+
+Verifiziert: Zeilen nach oben verschieben und Wichtigkeitsreihenfolge zurücksetzen, Linksklick-Menü, ausgeklappte Rangbegründung und leerer Import nach Texterkennung im Browser. Quellen hinzufügen/lesen/entfernen über die lokale API geprüft und Ausgangsprofil danach wiederhergestellt. Testdaten wurden nicht als Angebote gespeichert.
