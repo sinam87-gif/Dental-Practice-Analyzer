@@ -15,3 +15,6 @@ export async function recordRun(input:any){if(!input||!['completed','partial','f
 export async function getProfile(){const row:any=await db().prepare('SELECT payload FROM settings WHERE id=?').bind('profile').first();return row?validateProfile(JSON.parse(row.payload)):structuredClone(defaultProfile)}
 export async function setProfile(input:any){const p=validateProfile(input);await db().prepare('INSERT INTO settings(id,payload) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload').bind('profile',JSON.stringify(p)).run();return p}
 export async function moveOffer(id:string,stage:string,title?:string){if(!['accepted','inbox','deleted','dismissed'].includes(stage))throw Error('Ungültige Aktion');const row:any=await db().prepare('SELECT payload FROM offers WHERE id=?').bind(id).first();if(!row)throw Error('Angebot nicht gefunden');const o=JSON.parse(row.payload);return save({...o,stage,...(title!==undefined?{title}:{} )})}
+
+export async function getSetting<T>(id:string,fallback:T):Promise<T>{const row:any=await db().prepare('SELECT payload FROM settings WHERE id=?').bind(id).first();return row?JSON.parse(row.payload):fallback}
+export async function putSetting(id:string,value:unknown){await db().prepare('INSERT INTO settings(id,payload) VALUES(?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload').bind(id,JSON.stringify(value)).run()}
