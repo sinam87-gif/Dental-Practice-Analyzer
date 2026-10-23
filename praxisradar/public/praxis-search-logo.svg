@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="none">
+  <title>Praxis Search – Zahnklinik und Lupe</title>
+  <rect width="80" height="80" rx="21" fill="#244C3E"/>
+  <path d="M13 62V29a4 4 0 0 1 4-4h8V17a4 4 0 0 1 4-4h21a4 4 0 0 1 4 4v8h8a4 4 0 0 1 4 4v33H13Z" fill="#F5F5E9"/>
+  <path d="M34 23c-2-4-8-3-8 2 0 4 2 11 4 11 2 0 1-6 4-6s2 6 4 6c2 0 4-7 4-11 0-5-6-6-8-2Z" fill="#244C3E" transform="translate(5 -1)"/>
+  <path d="M21 36h5m-5 10h5m25-10h5M34 62V45h9v17" stroke="#244C3E" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="56" cy="53" r="13" fill="#BFD7B6" stroke="#244C3E" stroke-width="5"/>
+  <circle cx="56" cy="53" r="8.5" stroke="#F5F5E9" stroke-width="2"/>
+  <path d="m65.5 63 8 8" stroke="#244C3E" stroke-width="9" stroke-linecap="round"/>
+  <path d="m65.5 63 8 8" stroke="#BFD7B6" stroke-width="5" stroke-linecap="round"/>
+</svg>
