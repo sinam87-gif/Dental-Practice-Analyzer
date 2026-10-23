@@ -7,3 +7,5 @@
 .originaltext{white-space:pre-wrap;overflow-wrap:anywhere;max-height:70vh;overflow:auto;padding:18px;background:#f4f7f4;border-radius:8px}
 
 .cliniclogo{display:block;width:58px;height:58px;flex-shrink:0}@media(max-width:640px){.cliniclogo{width:48px;height:48px}}
+.top{flex-direction:column;align-items:flex-start;gap:10px}.brandmotto{display:block;font-size:clamp(.75rem,1.6vw,.9rem)}
+.brandmotto{align-self:stretch;text-align:center}
