@@ -25,3 +25,13 @@ SEARCH.md enthält Quellen, Datenformat, Filter, Dublettenerkennung, Verifikatio
 ## Prüfung
 
 `node scripts/check-model.mjs`, `node node_modules/typescript/bin/tsc --noEmit` und Build erfolgreich. Lokal: D1-Write/Readback, Zurückweisung ungültiger Werte, Browser-API ohne Identität 401 und MCP tools/list erfolgreich. Temporäre Testangebote wurden entfernt.
+
+## Angebotsimport
+
+Im Angebotsradar: Datei ablegen/auswählen, URL einlesen oder Angebotstext einfügen. Dateiauswahl und Drag-and-drop starten die Erkennung automatisch. PDF (auch Scan, OCR bis 12 Seiten), DOCX, Bilder und Text werden im Browser ausgelesen. Maximal fünf zusammengehörige Dateien, je 20 MB, zusammen 40 MB; PDF-Text bis 40 Seiten. OCR lädt deutsche/englische Sprachdaten beim ersten Gebrauch. Dokumentinhalte werden für OCR nicht an einen KI-Dienst gesendet.
+
+Erkannte Felder erscheinen mit Fundstelle und werden nach „Angaben übernehmen & prüfen“ vorbefüllt. Keine automatische Speicherung, Bewertungen oder erfundene fehlende Angaben. Felderkennung ist regelbasiert, kein universelles Sprachmodell: ungewöhnliche Formulierungen können fehlen. Mehrere Inserat-Referenzen oder widersprüchliche Raumangaben werden zur Prüfung markiert. Keine Bewertungen allein aus Exposé-Behauptungen.
+
+URLs werden serverseitig ohne Benutzer-Cookies abgerufen; private/interne URLs und IP-Literale werden abgelehnt. Öffentliche DNS-Auflösung, Weiterleitungsprüfung, Größen- und Zeitlimits. Login-, Anti-Bot- und nur JavaScript-basierte Seiten können scheitern; dann PDF oder kopierten Text nutzen. PDF/OCR-Worker werden mit scripts/prepare-import-assets.mjs vorbereitet (auch Teil der Build- und Dev-Skripte).
+
+Verifiziert: Textimport im Browser einschließlich Vorbefüllung und PDF-Dateiimport; öffentlicher Linkabruf und Ablehnung privater URLs; TypeScript, Extraktionstests und Build. Zusätzlicher Screenshot-Uploadtest wurde durch die abgelehnte Browser-Uploadfreigabe gestoppt. OCR und DOCX daher noch nicht vollständig im Browser verifiziert. Veröffentlichung und tägliche Suche bleiben vom früher dokumentierten Hosting-Blocker betroffen.

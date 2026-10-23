@@ -1,0 +1,11 @@
+import fs from 'node:fs';import ts from 'typescript';import assert from 'node:assert/strict';
+function transpile(p){return ts.transpileModule(fs.readFileSync(p,'utf8'),{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText}
+const model='data:text/javascript;base64,'+Buffer.from(transpile('lib/model.ts')).toString('base64');const source=transpile('lib/import-offer.ts').replace("'./model'",JSON.stringify(model));const {extractOffer,germanNumber}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+assert.equal(germanNumber('1.250.000'),1250000);assert.equal(germanNumber('1,25 Mio.'),1250000);
+const text='Zahnarztpraxis in Köln zu verkaufen\nObjekt-Nr.: ABC123\nStandort: Köln\n6 Behandlungszimmer\nKaufpreis: 750.000 €\nJahresumsatz: 1,2 Mio. €\nJahresgewinn: 250.000 €\n3 angestellte Zahnärzte\n2 Behandler bleiben\nEigenlabor: Ja\nVerkaufsgrund: Altersgründe\nPatientenstamm: 1500 aktive Patienten';
+const a=extractOffer(text);assert.equal(a.offer.rooms,6);assert.equal(a.offer.price,750000);assert.equal(a.offer.revenue,1200000);assert.equal(a.offer.profit,250000);assert.equal(a.offer.practitioners,3);assert.equal(a.offer.staying,2);assert.equal(a.offer.lab,'Ja');assert.equal(a.offer.city,'Köln');assert.equal(a.offer.reference,'ABC123');assert.equal(a.offer.reason,'Altersgründe');assert.equal(a.offer.distance,null);assert.deepEqual(a.offer.scores,{});assert(a.findings.every(x=>x.quote.length));
+const b=extractOffer('Zahnarztpraxis Köln\n3 Behandlungszimmer, erweiterbar auf 6 Behandlungszimmer. Kein Eigenlabor. Team: 8 Mitarbeiter');assert.equal(b.offer.rooms,3);assert.equal(b.offer.lab,'Nein');assert.equal(b.offer.practitioners,null);
+const c=extractOffer('Zahnarztpraxis Köln\n6 Behandlungszimmer\n7 Behandlungszimmer');assert.equal(c.offer.rooms,null);
+assert.equal(extractOffer('Zahnarztpraxis Köln\nBehandler: 3\ndavon verbleibend: 2').offer.staying,2);
+assert.equal(extractOffer('Zahnarztpraxis Köln\n6 Behandlungszimmer geplant').offer.rooms,null);
+console.log('PASS: Geldbeträge, Exposé-Felder, Behandler statt Teamgröße, vorhandene statt geplante Räume, Widersprüche, Belegstellen und unbekannte Werte');
