@@ -1,0 +1,3 @@
+import {getChatGPTUser} from '../../chatgpt-auth';import {searchInternet,locate} from '../../../lib/web-search';
+export const dynamic='force-dynamic';
+export async function POST(req:Request){if(!await getChatGPTUser())return Response.json({error:'Bitte anmelden'},{status:401});if(req.headers.get('origin')&&new URL(req.url).origin!==req.headers.get('origin'))return new Response('Origin abgelehnt',{status:403});try{const b:any=await req.json();if(b.action==='locate'){if(typeof b.query!=='string'||b.query.length>160)throw Error('Ungültiger Ort');return Response.json(await locate(b.query))}return Response.json(await searchInternet())}catch(e){return Response.json({error:(e as Error).message},{status:400})}}

@@ -9,3 +9,5 @@ const c=extractOffer('Zahnarztpraxis Köln\n6 Behandlungszimmer\n7 Behandlungszi
 assert.equal(extractOffer('Zahnarztpraxis Köln\nBehandler: 3\ndavon verbleibend: 2').offer.staying,2);
 assert.equal(extractOffer('Zahnarztpraxis Köln\n6 Behandlungszimmer geplant').offer.rooms,null);
 console.log('PASS: Geldbeträge, Exposé-Felder, Behandler statt Teamgröße, vorhandene statt geplante Räume, Widersprüche, Belegstellen und unbekannte Werte');
+
+assert.equal(extractOffer('Zahnarztpraxis im Raum Göppingen zu verkaufen\nScheindurchschnitt pro Quartal: 750\nBehandlungszimmer:\n4').offer.rooms,4);assert.equal(extractOffer('Zahnarztpraxis im Raum Göppingen zu verkaufen').offer.city,'Göppingen');

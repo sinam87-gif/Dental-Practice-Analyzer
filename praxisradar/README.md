@@ -35,3 +35,17 @@ Erkannte Felder erscheinen mit Fundstelle und werden nach „Angaben übernehmen
 URLs werden serverseitig ohne Benutzer-Cookies abgerufen; private/interne URLs und IP-Literale werden abgelehnt. Öffentliche DNS-Auflösung, Weiterleitungsprüfung, Größen- und Zeitlimits. Login-, Anti-Bot- und nur JavaScript-basierte Seiten können scheitern; dann PDF oder kopierten Text nutzen. PDF/OCR-Worker werden mit scripts/prepare-import-assets.mjs vorbereitet (auch Teil der Build- und Dev-Skripte).
 
 Verifiziert: Textimport im Browser einschließlich Vorbefüllung und PDF-Dateiimport; öffentlicher Linkabruf und Ablehnung privater URLs; TypeScript, Extraktionstests und Build. Zusätzlicher Screenshot-Uploadtest wurde durch die abgelehnte Browser-Uploadfreigabe gestoppt. OCR und DOCX daher noch nicht vollständig im Browser verifiziert. Veröffentlichung und tägliche Suche bleiben vom früher dokumentierten Hosting-Blocker betroffen.
+
+## Onepager: Praxis Search macher gmbh
+
+Die Navigation wurde durch eine einzelne Seite ersetzt: editierbares, in D1 gespeichertes Suchprofil; Import mit bewusstem Erkennen und Speichern; gespeicherte Praxen untereinander; separater Eingang für Internetfunde; Vergleich und Fazit am Seitenende. Der Import leert sich erst nach erfolgreichem Speichern. Rechtsklick und ⋯ bieten Umbenennen, Bearbeiten und reversibles Entfernen.
+
+Suchprofil enthält Ort, frei wählbaren Luftlinienradius, Mindestzimmer, Budget, Behandler-/Verbleibsvorgaben, Umsatz-/Gewinngrenzen, Eigenlaborwunsch, Angebotsarten, Notizen und normalisierte Gewichte. Bei Ortswechsel wird der Mittelpunkt beim Speichern öffentlich geokodiert. Freie Notizen werden nicht stillschweigend als strukturierte Muss-Filter interpretiert. Ungefähr bekannte Standorte bleiben kenntlich.
+
+„Suche aktualisieren“ sucht öffentlich per Websuche und prüft außerdem dental-bauer-, Concura- und tape.-Übersichten. Maximal 18 Kandidaten pro Lauf, begrenzte Quellenabdeckung, dokumentierte Zugriffslücken. Nur passende oder noch unvollständig beschriebene Angebote landen im Eingang, nie automatisch in der angenommenen Liste. Autorisierung über die Plattform-Identität, Quellseiten ohne Benutzer-Cookies. Mindestens 45 Sekunden Abstand zwischen Läufen. Kein täglich laufender Zeitplan eingerichtet.
+
+Automatische Analyse vergleicht ausschließlich angenommene Angebote. Muss-Verstöße werden zuerst berücksichtigt; danach gewichtete, erreichte Punkte und Datenabdeckung. Eigene begründete Scores gehen vor. Ergänzende Regeln für Gewinnmarge, Verbleibsquote, Laborstatus und Budget sind in lib/analysis.ts und der UI offengelegt. Keine erfundenen Nachfrage-/Konkurrenzbewertungen. Bei weniger als 50 % bewerteter Gewichtung des führenden Angebots wird kein klarer Favorit benannt. Vorläufige Einordnungen nennen offene Punkte.
+
+Schemaerweiterung: drizzle/0001_sticky_sandman.sql ergänzt settings; lokale Migration ist angewandt. Vorhandene Angebote bleiben erhalten, neue Suchfunde erhalten stage=inbox. deleted/dismissed sind reversible Zustände. Deployment weiter nicht abgeschlossen; lokale Vorschau und GitHub-Sicherung sind der geprüfte Stand.
+
+Verifiziert: Profil-Persistenz, dynamischer Radius und Mindestgröße, Eingang/Annahme-Trennung, Umbenennen, Entfernen und Wiederherstellen, Import-Speichern mit anschließend leerem Feld, Rechtsklick und Vergleich/Fazit im Browser. Echte Websuche durchgeführt. Eine ursprüngliche Fehllesung von Quartalsfallzahlen als Raumzahl wurde korrigiert und die neu gefundenen Einträge erneut geprüft. Temporäre QA-Angebote wurden entfernt.
