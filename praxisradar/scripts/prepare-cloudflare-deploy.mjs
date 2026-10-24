@@ -8,7 +8,7 @@ if(!Array.isArray(settings.emails)||settings.emails.length!==3||new Set(settings
 if(settings.authMode&&settings.authMode!=='password')throw Error('Diese Freigabe verwendet die bestehende private Teamanmeldung');
 if(settings.bucketName)throw Error('Diese Freigabe verwendet D1-Dateiablage; kein R2-Abonnement vorgesehen');
 const config=JSON.parse(await fs.readFile('dist/server/wrangler.json','utf8'));
-Object.assign(config,{name:'praxis-search-app',account_id:settings.accountId,workers_dev:true,preview_urls:false,d1_databases:[{binding:'DB',database_name:'praxis-search-app',database_id:settings.databaseId}],r2_buckets:[],triggers:{crons:['0 7,8 * * *']},vars:{...config.vars,DEPLOYMENT_MODE:'cloudflare',TEAM_AUTH_MODE:'password',ACCESS_TEAM_DOMAIN:'',ACCESS_AUD:'',TEAM_EMAILS:settings.emails.join(',')},assets:{...config.assets,binding:'ASSETS',run_worker_first:true},observability:{enabled:true}});
+Object.assign(config,{name:'praxis-search-app',account_id:settings.accountId,workers_dev:true,preview_urls:false,d1_databases:[{binding:'DB',database_name:'praxis-search-app',database_id:settings.databaseId}],r2_buckets:[],triggers:{crons:['* * * * *']},services:[{binding:'SEARCH_RUNNER',service:'praxis-search-app',entrypoint:'SearchRunner'}],vars:{...config.vars,DEPLOYMENT_MODE:'cloudflare',TEAM_AUTH_MODE:'password',PLATFORM_EMAIL_DELIVERY:'disabled',ACCESS_TEAM_DOMAIN:'',ACCESS_AUD:'',TEAM_EMAILS:settings.emails.join(',')},assets:{...config.assets,binding:'ASSETS',run_worker_first:true},observability:{enabled:true}});
 delete config.legacy_env;
 await fs.writeFile('dist/server/cloudflare.wrangler.json',JSON.stringify(config,null,2),{mode:0o600});
 await fs.chmod('dist/server/cloudflare.wrangler.json',0o600);

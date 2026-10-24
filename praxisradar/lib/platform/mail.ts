@@ -1,0 +1,4 @@
+// Delivery is deliberately not wired into the cron during development.
+// A future deployment requires an explicit enabled flag AND a verified sender.
+export type MailConfig={enabled:boolean,apiKey?:string,from?:string};
+export async function deliverPreparedDigest(config:MailConfig,draft:{to:string,subject:string,text:string},id:string,fetcher:typeof fetch=fetch){if(!config.enabled)return {sent:false,reason:'Versand nicht freigegeben'};if(!config.apiKey||!config.from||!/^.+@.+\..+$/.test(config.from))throw Error('Versanddienst und verifizierter Absender fehlen');const response=await fetcher('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+config.apiKey,'Content-Type':'application/json','Idempotency-Key':id},body:JSON.stringify({from:config.from,to:[draft.to],subject:draft.subject,text:draft.text})});if(!response.ok)throw Error('Versanddienst hat die Zusammenfassung nicht angenommen');return {sent:true};}

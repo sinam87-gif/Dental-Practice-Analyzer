@@ -1,3 +1,6 @@
+import {WorkerEntrypoint} from 'cloudflare:workers';
+import {scheduledPlatform,advancePlatform,type PlatformEnv} from '../lib/platform/engine';
+export class SearchRunner extends WorkerEntrypoint<PlatformEnv>{async advance(){return advancePlatform(this.env);}}
 import {handleTeamAuth,teamSessionRequest} from '../lib/team-auth';
 import {authenticatedTeamRequest} from '../lib/access-auth';
 import handler from "vinext/server/fetch-handler";
@@ -7,9 +10,7 @@ import type { ConnectorBinding } from "../lib/connector-contract.mjs";
 const worker = {
   async scheduled(controller:ScheduledController,env:Cloudflare.Env,ctx:ExecutionContext){
     if((env as unknown as {DEPLOYMENT_MODE?:string}).DEPLOYMENT_MODE!=='cloudflare')return;
-    // The cron runs at 07:00 and 08:00 UTC; only 09:00 Europe/Berlin executes, including DST.
-    if(new Intl.DateTimeFormat('en-GB',{hour:'2-digit',hourCycle:'h23',timeZone:'Europe/Berlin'}).format(new Date(controller.scheduledTime))!=='09')return;
-    const {runDailySearch}=await import('../lib/daily-search');ctx.waitUntil(runDailySearch());
+    ctx.waitUntil(scheduledPlatform(env as unknown as PlatformEnv,new Date(controller.scheduledTime)));
   },
   async fetch(request: Request, env: Cloudflare.Env, ctx: ExecutionContext<{ CONNECTORS?: ConnectorBinding }>) {
     const deployment=env as unknown as {DEPLOYMENT_MODE?:string,TEAM_AUTH_MODE?:string,DB:D1Database,ACCESS_TEAM_DOMAIN?:string,ACCESS_AUD?:string,TEAM_EMAILS?:string};

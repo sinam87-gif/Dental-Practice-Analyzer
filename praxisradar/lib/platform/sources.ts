@@ -1,0 +1,14 @@
+import type {Source} from './types';
+const date='2026-10-24';
+// A public mode is not a blanket licence. Every request is additionally checked
+// against the live robots policy; blocked/private pages are never bypassed.
+export const platformSources:Source[]=[
+{id:'concura',name:'Concura',url:'https://www.concura.de/boerse/praxisangebote/',kind:'broker',mode:'public',note:'Öffentliche Börse; keine Exposé-Anforderung. Abruffehler werden offen ausgewiesen.',termsURL:'https://www.concura.de/boerse/preise-und-leistungen/',reviewedAt:date,adapter:'links',detailPattern:'/boerse/praxisangebote/.+'},
+{id:'apobank',name:'apoBank',url:'https://praxisboerse.apobank.de/praxis-und-apothekenboerse/',kind:'bank',mode:'public',note:'Nur ohne Anmeldung sichtbare Angebote. Registrierungs-/JavaScript-Wände werden als eingeschränkt gemeldet.',termsURL:'https://praxisboerse.apobank.de/services/nutzungsbedingungen/',reviewedAt:date,adapter:'links',detailPattern:'/(?:angebot|expose|objekt|praxis-und-apothekenboerse)/.+'},
+{id:'dentoffert',name:'Dentoffert · ZÄK Nordrhein/Niedersachsen',url:'https://www.dentoffert.de/inserate?search=&type=praxis',kind:'chamber',mode:'public',note:'Öffentliche Praxisangebote; Gesuche, Räume ohne laufende Praxis und geschützte Kontakte werden nicht übernommen.',termsURL:'https://www.dentoffert.de/nutzungsbedingungen',reviewedAt:date,adapter:'dentoffert',detailPattern:'/inserate/single/\\d+'},
+{id:'kzvrlp',name:'KZV Rheinland-Pfalz',url:'https://www.kzvrlp.de/praxisabgabe/',kind:'chamber',mode:'public',note:'Nur öffentlich angezeigte Praxisabgaben; keine geschützten Exposé-Downloads.',termsURL:'https://www.kzvrlp.de/impressum/',reviewedAt:date,adapter:'rlp',detailPattern:'/praxisabgabe/'},
+{id:'kzvwl',name:'KZV / ZÄK Westfalen-Lippe',url:'https://www.zahnaerzte-wl.de/praxisboerse/',kind:'chamber',mode:'manual',note:'Nutzung durch Dritte/Dienstanbieter untersagt; Details erfordern Registrierung. Nur manuell öffnen.',termsURL:'https://www.zahnaerzte-wl.de/pages/agbs-der-praxisboerse',reviewedAt:date,adapter:'links',detailPattern:'$^'},
+{id:'dentalbauer',name:'dental bauer',url:'https://www.dentalbauer.de/dienstleistungen/praxisboerse',kind:'broker',mode:'public',note:'Öffentliche Einzelangebote; Robots-Regeln und Abfragerate beachten.',termsURL:'https://www.dentalbauer.de/agb',reviewedAt:date,adapter:'links',detailPattern:'/praxisboerse/[^/?]+(?:db\\d+|\\d{4,})'},
+{id:'boeker',name:'Böker · Praxiskaufen',url:'https://www.praxiskaufen.de/praxisvermittlung/',kind:'broker',mode:'public',note:'Öffentliche Praxisangebote, keine Kontaktformulare absenden.',termsURL:'https://www.praxiskaufen.de/impressum/',reviewedAt:date,adapter:'links',detailPattern:'/praxisvermittlung/\\d+'}
+];
+export function sourceFor(id:string){const s=platformSources.find(s=>s.id===id);if(!s)throw Error('Unbekannte Suchquelle');return s;}
