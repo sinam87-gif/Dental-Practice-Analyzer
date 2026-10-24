@@ -20,6 +20,7 @@ node scripts/check-team-password.mjs
 node scripts/check-rank-names.mjs
 node scripts/check-source-discovery.mjs
 node scripts/check-release-config.mjs
+node scripts/check-search-status.mjs
 pnpm run build
 ```
 
@@ -45,4 +46,4 @@ Vor dem Wechsel private D1-Sicherung erstellen und Migrationen mit dem bestehend
 
 Erst nach ausdruecklicher Deployment-Freigabe den vorhandenen Worker mit dem Repository verbinden, den Produktionsbranch bewusst waehlen und die privaten Build-Variablen konfigurieren. Keine neue App und keine neue Datenbank erstellen. Builds mit Teamwerten nicht als oeffentliche Artefakte hochladen.
 
-Bekannte Grenze des Originals: Die taegliche Suche kann Teilfehler einzelner Quellen haben; der Gesamtstatus unterscheidet diese derzeit nicht durchgaengig. Vor einem produktiven Versionswechsel anhand des Suchprotokolls pruefen. Ein erfolgreicher Build beweist keine vollstaendige Marktabdeckung.
+Die Statuszusammenfassung zeigt Teilerfolge und Fehler getrennt an. Aeltere irrefuehrende Statuswerte werden nur beim Lesen normalisiert, ohne Daten umzuschreiben. Suchwege und Filter bleiben unveraendert. Ein erfolgreicher Build beweist keine vollstaendige Marktabdeckung.
