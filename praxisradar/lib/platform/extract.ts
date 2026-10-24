@@ -1,6 +1,6 @@
-import {load} from 'cheerio';import {germanNumber,extractOffer} from '../import-offer';import type {PublicListing,Source,Evidence} from './types';
+import {load} from 'cheerio/slim';import {roomCount,employedCount} from './counts';import {germanNumber,extractOffer} from '../import-offer';import type {PublicListing,Source,Evidence} from './types';
 export type PageItem={url:string,key:string,html?:string,title?:string,city?:string};
-export function publicText(html:string){const $=load(html);$('script,style,noscript,iframe,form,nav,footer,aside').remove();$('br').replaceWith('\n');$('p,div,li,tr,h1,h2,h3,h4,dt,dd').append('\n');return {text:($('main').length?$('main').text():$('body').text()).replace(/[ \t\u00a0]+/g,' ').replace(/\n\s*\n/g,'\n').trim().slice(0,80000),$};}
+export function publicText(html:string){const $=load(html);$('script,style,noscript,iframe,form,nav,footer,aside').remove();$('br').replaceWith('\n');$('p,div,li,tr,h1,h2,h3,h4,dt,dd').append('\n');return {text:($('main').length?$('main').text():$('body').length?$('body').text():$.root().text()).replace(/[ \t\u00a0]+/g,' ').replace(/\n\s*\n/g,'\n').trim().slice(0,80000),$};}
 export function pageItems(source:Source,html:string,url:string):{items:PageItem[],next:string[]}{const $=load(html),items:PageItem[]=[];
  if(source.adapter==='dentoffert'){$('.card-listing[id]').each((_,el)=>{const card=$(el),id=card.attr('id')||'',title=card.find('h3').first().text().trim();if(!/^Biete\s+Praxis/i.test(title))return;items.push({url:new URL('/inserate/single/'+id.replace('listing-',''),url).href,key:id,html:$.html(el).slice(0,50000),title});});}
  else if(source.adapter==='rlp'){$('.kzv-colwrap[id]').each((_,el)=>{const node=$(el);if(!node.find('h1').toArray().some(h=>$(h).text().trim()==='Praxisdaten'))return;const id=node.attr('id')||'';if(items.some(x=>x.key===id)||node.find('.kzv-colwrap').length)return;const city=node.find('h1').first().text().trim();items.push({url:url+'#'+id,key:id,html:$.html(el).slice(0,50000),title:city?city+' · Praxisabgabe':undefined,city:city||undefined});});}
@@ -8,10 +8,21 @@ export function pageItems(source:Source,html:string,url:string):{items:PageItem[
  const next:string[]=[];$('a[rel="next"],a').each((_,el)=>{const a=$(el);if(a.attr('rel')!=='next'&&!/^(?:Weiter|Nächste(?: Seite)?|Next|›|»)$/.test(a.text().trim()))return;try{const target=new URL(a.attr('href')!,url);if(target.hostname===new URL(url).hostname&&target.pathname===new URL(url).pathname)next.push(target.href)}catch{}});
  return {items:[...new Map(items.map(i=>[i.key,i])).values()],next:[...new Set(next)]};}
 function dateValue(text:string):string|null{const m=text.match(/(?:Veröffentlicht(?: am)?|Inseratsdatum|Angebotsdatum|Eingestellt(?: am)?)\s*[:\n]?\s*(\d{1,2})\.(\d{1,2})\.(\d{4})/i);if(!m)return null;const iso=m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');const date=new Date(iso+'T12:00:00Z');return Number.isFinite(date.getTime())&&date.toISOString().startsWith(iso)&&date.getTime()<=Date.now()+86400000?iso:null;}
-export function extractListing(source:Source,item:PageItem,html:string,observedAt=new Date().toISOString()):PublicListing|null{const {text,$}=publicText(html);if(text.length<60)return null;const sold=/\b(?:bereits verkauft|Status\s*:\s*verkauft|nicht mehr verfügbar)\b/i.test(text);
- if(!/zahn(?:arzt|ärzt|medizin|heil)|dental|\bKFO\b|\bMKG\b/i.test(text)||!/übernahm|übernehm|verkauf|praxisabgab|nachfolg|abzugeben|miteinstieg|beteiligung/i.test(text+' '+(source.adapter==='rlp'?'Praxisabgabe':'')))return null;
- if(/^\s*Suche\s+(?:eine?\s+)?Praxis/i.test(item.title||''))return null;const parsed=extractOffer(text,item.url,item.url);const o=parsed.offer;if(o.title==='Mehrere Angebote im Dokument'||o.kind==='Neugründung'||/reine?\s+(?:Praxis)?räume|nur\s+(?:Praxis)?räume|Neugründungsfläche/i.test(text))return null;
- const heading=$('h1,h2,h3').first().text().replace(/\s+/g,' ').trim();o.title=(item.title||heading||o.title||'Zahnarztpraxis · '+source.name).slice(0,300);o.city=item.city||o.city||'Unbekannt';o.url=item.url;o.kind=/beteiligung|miteinstieg|praxisanteil/i.test(text)?'Beteiligung':'Übernahme';o.stage='inbox';
+export function prepareListing(source:Source,item:PageItem,html:string){
+ const {text,$}=publicText(html);if(text.length<60||!/zahn(?:arzt|ärzt|medizin|heil)|dental|\bKFO\b|\bMKG\b/i.test(text))return null;
+ const parsed=extractOffer(text,item.url,item.url),heading=$('h1,h2,h3').first().text().replace(/\s+/g,' ').trim();
+ const email=$('a[href^="mailto:"]').first().attr('href')?.slice(7).split('?')[0]||text.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i)?.[0]||null;
+ const phone=$('a[href^="tel:"]').first().attr('href')?.slice(4)||text.match(/(?:Telefon|Tel\.?|Mobil)\s*:?\s*([+\d][\d ()/.-]{6,30}\d)/i)?.[1]||null;
+ const name=text.match(/(?:Kontaktperson|Ansprechpartner(?:in)?)\s*:\s*([^\n]{3,80})/i)?.[1]||null;
+ return {text,parsed,heading,email,phone,name,dateAttribute:$('time[datetime]').first().attr('datetime')||null};
+}
+export type PreparedListing=NonNullable<ReturnType<typeof prepareListing>>;
+export function extractListing(source:Source,item:PageItem,html:string,observedAt=new Date().toISOString(),prepared?:PreparedListing):PublicListing|null{
+ const document=prepared||prepareListing(source,item,html);if(!document)return null;const {text,parsed,heading,email,phone,name}=document;const sold=/\b(?:bereits verkauft|Status\s*:\s*verkauft|nicht mehr verfügbar)\b/i.test(text);
+ if(!/übernahm|übernehm|verkauf|praxisabgab|nachfolg|abzugeben|miteinstieg|beteiligung/i.test(text+' '+(source.adapter==='rlp'?'Praxisabgabe':'')))return null;
+ if(/^\s*Suche\s+(?:eine?\s+)?Praxis/i.test(item.title||''))return null;const o=parsed.offer;if(o.title==='Mehrere Angebote im Dokument'||o.kind==='Neugründung'||/reine?\s+(?:Praxis)?räume|nur\s+(?:Praxis)?räume|Neugründungsfläche/i.test(text))return null;
+ o.title=(item.title||heading||o.title||'Zahnarztpraxis · '+source.name).slice(0,300);o.city=item.city||o.city||'Unbekannt';o.url=item.url;o.kind=/beteiligung|miteinstieg|praxisanteil/i.test(text)?'Beteiligung':'Übernahme';o.stage='inbox';
+
  const evidence:Evidence[]=parsed.findings.map(f=>({field:f.field,value:(o as any)[f.field],quote:f.quote.slice(0,240),url:item.url,observedAt})).filter(e=>e.value!==null&&e.value!==undefined);
 
  const amount='(-?[0-9][0-9.,]*(?:\\s*(?:Mio\\.?|Millionen?|Tsd\\.?|Tausend|k))?)';
@@ -23,17 +34,15 @@ export function extractListing(source:Source,item:PageItem,html:string,observedA
  }
  const one=(field:string,re:RegExp)=>{const m=text.match(re);if(!m)return null;const value=Number(m[1]||m[2]);evidence.push({field,value,quote:m[0].slice(0,240),url:item.url,observedAt});return value;};
  // An employed dentist count is NOT the total practitioner count.
- const employed=one('employedDentists',/(\d{1,2})\s+angestellte(?:n|r)?\s+(?:Zahnärzt(?:e|innen)|Zahnärztinnen und Zahnärzte|Zahnaerzte)|angestellte\s+Zahnärzte\s*:\s*(\d{1,2})/i);
+ const room=roomCount(text);o.rooms=room.value;for(let i=evidence.length-1;i>=0;i--)if(evidence[i].field==='rooms')evidence.splice(i,1);if(room.value!==null)evidence.push({field:'rooms',value:room.value,quote:room.quote!,url:item.url,observedAt});
+ const employeeFact=employedCount(text),employed=employeeFact.value;if(employed!==null)evidence.push({field:'employedDentists',value:employed,quote:employeeFact.quote!,url:item.url,observedAt});
  const total=text.match(/(?:insgesamt|gesamt)\s*:?\s*(\d{1,2})\s*(?:Zahnärzte|Behandler)(?!\w)|(?:Behandler(?:zahl)?|Zahnärzte gesamt)\s*:\s*(\d{1,2})/i);if(total){o.practitioners=Number(total[1]||total[2]);evidence.push({field:'practitioners',value:o.practitioners,quote:total[0],url:item.url,observedAt});}else if(employed!==null)o.practitioners=null;
  if(o.practitioners===null&&/Einbehandlerpraxis/i.test(text))o.practitioners=1;
  const closed=/Praxis[^.!?\n]{0,100}(?:ist|wurde)[^.!?\n]{0,60}geschlossen|Betrieb[^.!?\n]{0,100}(?:ist|wurde)[^.!?\n]{0,60}eingestellt|(?:krankheitsbedingt|vorübergehend)\s+geschlossen/i.test(text);
  const running=closed?false:/laufende[rn]?\s+(?:Betrieb|Praxis)|laufenden Betrieb|etablierte[nr]?\s+(?:Zahnarzt)?praxis|langjährig.{0,30}(?:Praxis|Patientenstamm)|umsatzstark|gewinnstark/i.test(text)?true:/Betrieb.{0,20}eingestellt|Praxis.{0,20}geschlossen/i.test(text)?false:null;
  if(running!==null)evidence.push({field:'running',value:running,quote:text.match(/.{0,35}(?:laufend|etabliert|langjährig|umsatzstark|gewinnstark|eingestellt|geschlossen).{0,90}/i)?.[0]||'',url:item.url,observedAt});
- const email=$('a[href^="mailto:"]').first().attr('href')?.slice(7).split('?')[0]||text.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i)?.[0]||null;
- const phone=$('a[href^="tel:"]').first().attr('href')?.slice(4)||text.match(/(?:Telefon|Tel\.?|Mobil)\s*:?\s*([+\d][\d ()/.-]{6,30}\d)/i)?.[1]||null;
- const name=text.match(/(?:Kontaktperson|Ansprechpartner(?:in)?)\s*:\s*([^\n]{3,80})/i)?.[1]||null;
  const labeledReference=text.match(/\b(?:Inserat(?:snummer|-Nr\.?)?|Chiffre|Angebotsnummer|Referenz(?:nummer)?|Objekt(?:nummer|-Nr\.?))\s*[:#]?\s*([A-Z0-9][A-Z0-9_-]{1,35})\b/i)?.[1];const reference=labeledReference&&/\d/.test(labeledReference)?labeledReference:text.match(/\(#\s*(\d{2,12})\)/)?.[1];delete o.reference;for(let i=evidence.length-1;i>=0;i--)if(evidence[i].field==='reference')evidence.splice(i,1);if(reference&&/\d/.test(reference)){o.reference=reference;evidence.push({field:'reference',value:reference,quote:reference,url:item.url,observedAt});}
- let publishedAt=dateValue(text);if(!publishedAt){const date=$('time[datetime]').first().attr('datetime');if(date&&/^\d{4}-\d{2}-\d{2}/.test(date)&&Number.isFinite(Date.parse(date))&&Date.parse(date)<=Date.now()+86400000)publishedAt=date.slice(0,10);}
+ let publishedAt=dateValue(text);if(!publishedAt){const date=document.dateAttribute;if(date&&/^\d{4}-\d{2}-\d{2}/.test(date)&&Number.isFinite(Date.parse(date))&&Date.parse(date)<=Date.now()+86400000)publishedAt=date.slice(0,10);}
  if(publishedAt)evidence.push({field:'publishedAt',value:publishedAt,quote:publishedAt,url:item.url,observedAt});for(const [field,value] of Object.entries({email,phone,name}))if(value)evidence.push({field:'contact.'+field,value,quote:value,url:item.url,observedAt});
  o.notes='Öffentliches Inserat, automatisch erkannt; Angaben ungeprüft. Quelle: '+source.name+'. Fehlende Angaben bleiben unbekannt.';return {offer:o,sourceId:source.id,externalKey:item.key,sourceURLs:[item.url],publishedAt,contact:{name,email,phone},employees:one('employees',/(\d{1,3})\s+(?:Mitarbeiter(?:innen)?|Beschäftigte)/i),employedDentists:employed,multiPractitioner:/Mehrbehandler|Gemeinschaftspraxis/i.test(text)?true:o.practitioners!==null?o.practitioners>=2:employed!==null&&employed>=2?true:null,running,evidence:evidence.filter(e=>e.field!=='practitioners'||o.practitioners!==null),verifiedAt:observedAt,publicationUnknown:publishedAt===null,availability:sold?'sold':'available'};
 }
