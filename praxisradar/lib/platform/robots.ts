@@ -5,5 +5,11 @@ export function robotsRule(text:string,url:string,agent='PraxisRadarBot'):{allow
  let best:{allow:boolean,length:number}|undefined;for(const group of selected)for(const rule of group.rules){const end=rule.path.endsWith('$'),pattern=rule.path.replace(/\$$/,'').split('*').map(s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('.*');if(new RegExp('^'+pattern+(end?'$':'')).test(path)){const length=rule.path.replace(/[*$]/g,'').length;if(!best||length>best.length||length===best.length&&rule.allow)best={allow:rule.allow,length};}}
  return {allowed:best?.allow??true,delay:Math.max(1,...selected.map(g=>g.delay))};
 }
-export function restrictedContent(html:string){return /(?:cf-chl-|challenge-platform|g-recaptcha|hcaptcha|captcha-container|verify you are human|bestätigen.{0,30}(?:mensch|human))/i.test(html);}
+export function restrictedContent(html:string){
+ if(/(?:cf-chl-|challenge-platform|verify you are human|bestätigen.{0,30}(?:mensch|human))/i.test(html))return true;
+ // Contact-form spam protection does not restrict reading public listings.
+ // Forms are never submitted; standalone challenges still stop the crawler.
+ const publicPage=html.replace(/<form\b[\s\S]*?<\/form\s*>/gi,'').replace(/<script\b[\s\S]*?<\/script\s*>/gi,'');
+ return /(?:g-recaptcha|hcaptcha|captcha-container)/i.test(publicPage);
+}
 export function canonicalURL(raw:string){const u=new URL(raw);if(u.protocol!=='https:'||u.username||u.password)throw Error('Nur öffentliche HTTPS-Links');u.hash='';for(const key of [...u.searchParams.keys()])if(/^utm_|^(?:fbclid|gclid|session|token|auth|sid)$/i.test(key))u.searchParams.delete(key);u.hostname=u.hostname.toLowerCase();u.searchParams.sort();return u.href.replace(/\/$/,'');}
