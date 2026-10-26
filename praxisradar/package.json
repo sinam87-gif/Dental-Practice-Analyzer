@@ -11,7 +11,7 @@
     "start": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --inspector-port 0",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
-    "check:release": "node scripts/check-team-cloud.mjs && node scripts/check-team-password.mjs && node scripts/check-rank-names.mjs && node scripts/check-source-discovery.mjs && node scripts/check-release-config.mjs && node scripts/check-search-status.mjs && node scripts/check-search-platform.mjs && node scripts/check-free-search.mjs && node scripts/check-search-reliability.mjs"
+    "check:release": "node scripts/check-team-cloud.mjs && node scripts/check-team-password.mjs && node scripts/check-rank-names.mjs && node scripts/check-source-discovery.mjs && node scripts/check-release-config.mjs && node scripts/check-search-status.mjs && node scripts/check-search-platform.mjs && node scripts/check-free-search.mjs && node scripts/check-search-reliability.mjs && node scripts/check-free-limits.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

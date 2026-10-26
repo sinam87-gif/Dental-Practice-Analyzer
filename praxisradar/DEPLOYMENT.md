@@ -55,3 +55,11 @@ Die Statuszusammenfassung zeigt Teilerfolge und Fehler getrennt an. Aeltere irre
 - Zusätzlich zu 0003/0004 müssen vor einer späteren Veröffentlichung die lokal geprüften Migrationen 0005/0006 ausdrücklich freigegeben werden. 0005 fügt eine Spalte, Tabellen, Indizes und atomare Speicherbudgettrigger hinzu; 0006 speichert die täglichen Aufträge. Kein DROP und keine Entfernung bestehender Angebote oder Dateien. Nicht auf Produktion anwenden, bevor Sicherung und Freigabe vorliegen.
 - Verwende für lokale Migrationstests dieselbe paketierte Wrangler-/Miniflare-Version wie die Vorschau. Das separate neuere Cloudflare-Werkzeug kann eine inkompatible lokale workerd-SQLite-Metadatenstruktur erzeugen. Keine Dependencies über den bestehenden node_modules-Symlink installieren.
 - Neue CPU-Messungen auf Cloudflare sind weiterhin erforderlich. Die früheren Messungen betreffen einen älteren Code. Diese Korrekturen enthalten keinen produktiven Suchlauf und keine kostenpflichtige Aktivierung.
+
+## CPU- und Free-Prüfung vom 26.10.2026
+
+Die aktuelle Messung steht am Anfang von AUTOMATIC-SEARCH.md. Alle 17 lokalen Testskripte, TypeScript, Produktionsbuild und Wrangler-Dry-Run bestehen. Ein isolierter Cloudflare-Replay erhält alle 23 Inserate, zeigt aber weiterhin CPU-Ausreißer bis 35 ms in einer unvollständigen Stichprobe. Keine Freigabe für zuverlässigen Free-Dauerbetrieb.
+
+Zusätzlich ist vor einer späteren Freigabe Migration 0007 nötig: ausschließlich zwei additive Tageszähler-Spalten. Niemals ungeprüft auf Produktion anwenden. Suchspezifische Grenzen von 500.000 gelesenen / 30.000 geschriebenen Zeilen je UTC-Tag lassen Reserve für die übrige App; sie sind keine kontoweite Garantie. Vor Freigabe Tarif, aktuelle Kontoquoten, frische private Sicherung und weiterhin bestehende Produktionsbindung prüfen.
+
+Der Generator blockiert zusätzliche Ressourcenbindungen und lässt Suchstarts standardmäßig deaktiviert. Wrangler-Dry-Run veröffentlicht nichts. Keine bezahlten Ressourcen, kein Tarifwechsel, keine produktive Migration wurden ausgeführt. Private Belege, Traces und Datenbankexporte bleiben ignoriert.

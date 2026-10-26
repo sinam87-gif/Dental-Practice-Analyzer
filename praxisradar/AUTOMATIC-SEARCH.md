@@ -1,3 +1,37 @@
+# Aktueller Prüfstand 26.10.2026: CPU-Optimierung, noch keine Free-Betriebsfreigabe
+
+Dieser Abschnitt ersetzt die älteren Mess- und Budgetangaben weiter unten. Änderungen sind ausschließlich auf dem Entwicklungsbranch vorbereitet; Produktion wurde weder migriert noch veröffentlicht.
+
+- Automatische Faktenauswertung liegt in `lib/platform/facts.ts`. Der Suchkern importiert keine Cheerio-/DOM-/Entity-Bibliotheken mehr. Manueller Import behält seinen bisherigen Parser. Automatischer Kern: 98.126 Bytes; Paketgröße ist keine CPU-Garantie.
+- Begrenzte Scannertexte werden nach Erreichen des Limits nicht weiter zusammengefügt/abgeschnitten. Wiederverwendete URL-/Regex-Werte, direkte Frame-Suche und Verzicht auf ungenutzte Detail-Link-Ausgaben bei Inline-Quellen reduzieren temporäre Objekte. Inline-Pagination bleibt erhalten. Datum-/Zahlformatierer werden wiederverwendet; gestufte Parsercaches enthalten keine doppelten Volltexte.
+- D1-Metadaten werden über wiederverwendete Statement-Methoden erfasst. Je UTC-Tag pausiert die Suche bei 500.000 gelesenen oder 30.000 geschriebenen erfassten Zeilen. Vorige Schrittkosten werden mit der nächsten Reservierung verbucht, plus je 16 konservativ reservierte Lese-/Schreibzeilen für Abschluss und Buchhaltung. Dies ist eine nachlaufende, suchspezifische Reserve, kein harter kontoweiter Abrechnungsschutz. Wartung, Anmeldung, Dashboard und andere Apps teilen die echten Kontolimits. Nach CPU-Abbruch können noch nicht verbuchte Kosten fehlen.
+- Weiterhin höchstens 1.100 Schritte pro UTC-Tag / 1.000 je Job und UTC-Tag, 42 reguläre SQL-/Netzwerkaufrufe, bis 45 einschließlich Abschluss; zusätzliche Reserve bis Free 50. Batches werden vorsorglich je Statement gezählt. Migration `0007_free_usage_meter.sql` fügt nur zwei Zählerspalten hinzu und wurde ausschließlich lokal sowie in isolierten Testtabellen angewendet.
+- HTTPS-Antwortkörper werden bei Redirect, Fehler und Größenüberschreitung abgebrochen; Reader-Locks werden freigegeben. Keine TLS-Abschaltung und keine Umgehung von Zugriffsschutz.
+- Generator lehnt zusätzliche Ressourcenbindungen, Logpush und Legacy-Nutzungsmodelle ab. Leere Wrangler-Standardfelder bleiben erlaubt. Kein Tarifwechsel, kein Versanddienst, keine automatische kostenpflichtige Erweiterung. Der tatsächliche Kontotarif muss vor einer späteren Freigabe weiterhin Free sein.
+- 09:00 Europe/Berlin mit Sommerzeit, Nachholen, Tageswarteschlange, Jetzt-suchen-Button, Anmeldung/Origin-Prüfung, Dublettenerkennung und begründeter Score bleiben erhalten. Ein Wartungstick je fünf Minuten lässt ohne geöffnetes Dashboard rund 48 Suchschritte pro Stunde zu. Der Testausschnitt mit 951 Verarbeitungsschritten benötigt rechnerisch knapp 20 Stunden; zusätzliche Netz-/Wartezeiten, Quellfehler und Budgetpausen können den Tageslauf verlängern.
+
+## Neue Messungen
+
+Unveröffentlichte Cloudflare-Remote-Entwicklung, getrennte Test-D1, getrennte A/B/C-Tabellen. Keine Produktionsbindung. Gespeicherte öffentliche HTML-Belege werden aus D1 gelesen; Regressionstest der 23 bekannten Inserate, keine neue Marktsuche.
+
+| Stand | HTTP-Aufrufe | erfasste CPU-Einzelwerte | Median / P99 / Maximum | Werte über 10 ms |
+| --- | ---: | ---: | --- | ---: |
+| Ausgangscode ohne eingebettete große Fixture | 963 | 253 | 6 / 13 / 17 ms | 11 |
+| Import-/Cache-Optimierung | 963 | 263 | 5 / 11 / 25 ms | 3 |
+| zusätzlicher Scanner-/Statement-Fix | 955 | 236 | 5 / 13 / 35 ms | 5 |
+
+Alle drei Läufe behalten 23/23 Inserate, ohne HTTP-Abbrüche. Einzelwerte stammen aus Cloudflare-Preview-Traces, sind ganzzahlig und unvollständig gesampelt (rund ein Viertel der Aufrufe). P99 ist hier das Stichprobenquantil, keine kontoweite Analytics-Angabe. Das Maximum ist nur das höchste erfasste Sample. Der alte 56,415-ms-Wert war ein aggregiertes P999 eines anderen Messfensters mit 2,3 MB eingebetteten Fixture-Daten; er lässt sich keiner Funktion nachträglich sicher zuordnen. Deshalb ist 56,4 → 35 ms kein belastbarer Vorher/Nachher-Nachweis.
+
+Finaler Replay: 55.661 D1-Zeilen gelesen, 12.514 geschrieben, höchstens 21 gezählte Aufrufe je Schritt. Die neue konservative interne Tagesbuchhaltung liegt höher. Lokaler Node-Replay: 23/23, 952 Aufrufe inklusive Abschluss, maximal 8,538 ms Prozess-CPU / 3,590 ms Thread-CPU. Lokaler workerd-Start: 17,9 ms aktive gesampelte Zeit; andere CPU und anderer Messzweck. Keine dieser lokalen Zahlen ersetzt Cloudflare-Messungen.
+
+Verzögerte Cloudflare-Analytics für das finale Testfenster bestätigen P50 5,820 ms, P99 11,454 ms und P999 35,733 ms, keine Fehler. Der adaptive Preview-Sammelname meldet 991 geschätzte Ereignisse gegenüber 955 tatsächlich gesendeten Testanfragen; keine exakte pro Funktion vollständige Zählung. Zwei zusätzliche echte Concura-Indexabrufe über normales HTTPS waren erfolgreich. Diese begrenzte Live-Prüfung ist kein neuer vollständiger Suchlauf.
+
+**Ergebnis:** Funktion und Ressourcenbegrenzung sind verbessert und getestet. Zuverlässiger dauerhafter Betrieb unter 10 ms ist noch nicht nachgewiesen. Restspitzen betreffen Scan und große Seitenabrufe; vollständige Anmeldung/SSR, Live-Geocodierung, ein ganzer Cron-Tag und größere Bestände benötigen getrennte Prüfungen. Erweiterung bleibt bis ausdrücklicher Freigabe serverseitig deaktiviert. Keine Veröffentlichung.
+
+Offizielle Referenzen: [Workers-Limits](https://developers.cloudflare.com/workers/platform/limits/), [D1-Limits](https://developers.cloudflare.com/d1/platform/limits/), [D1-Free-Kontingente und Verhalten bei Überschreitung](https://developers.cloudflare.com/d1/platform/pricing/).
+
+---
+
 # PraxisRadar – automatische Praxissuche (Entwicklungsstand 24.10.2026)
 
 Diese Erweiterung ist vorbereitet, lokal geprüft und noch nicht veröffentlicht. Sie verwendet die bestehende App, denselben Worker und dieselbe D1-Datenbank. Weder produktive Daten noch die laufende Version wurden geändert. Keine zusätzlichen Abonnements wurden aktiviert.

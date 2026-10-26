@@ -23,7 +23,7 @@ export const platformCache=sqliteTable('platform_cache',{id:text('id').primaryKe
 export const platformMail=sqliteTable('platform_mail',{id:text('id').primaryKey(),payload:text('payload').notNull(),status:text('status').notNull(),createdAt:text('created_at').notNull()},table=>[index('platform_mail_status').on(table.status)]);
 export const platformNotificationReads=sqliteTable('platform_notification_reads',{id:text('id').primaryKey(),notificationId:text('notification_id').notNull(),userId:text('user_id').notNull(),readAt:text('read_at').notNull()});
 
-export const platformDailyBudget=sqliteTable('platform_daily_budget',{day:text('day').primaryKey(),steps:integer('steps').notNull().default(0)});
+export const platformDailyBudget=sqliteTable('platform_daily_budget',{day:text('day').primaryKey(),steps:integer('steps').notNull().default(0),rowsRead:integer('rows_read').notNull().default(0),rowsWritten:integer('rows_written').notNull().default(0)});
 export const platformStorageBudget=sqliteTable('platform_storage_budget',{name:text('name').primaryKey(),bytes:integer('bytes').notNull(),maximum:integer('maximum').notNull()});
 
 // offers_public_url and payload-budget triggers are maintained as explicit SQL in migration 0005.

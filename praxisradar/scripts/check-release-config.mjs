@@ -17,5 +17,10 @@ try{
  assert.equal(c.name,'praxis-search-app');assert.equal(c.d1_databases[0].binding,'DB');assert.equal(c.d1_databases[0].database_id,env.PRAXIS_DATABASE_ID);
  assert.equal(c.vars.TEAM_AUTH_MODE,'password');assert.equal(c.assets.run_worker_first,true);assert.equal(c.preview_urls,false);assert.equal(c.r2_buckets.length,0);assert.equal(c.legacy_env,undefined);assert.equal(c.services.length,0);assert.equal(c.vars.PLATFORM_EMAIL_DELIVERY,'disabled');assert.equal(c.vars.PLATFORM_SEARCH_ENABLED,'false');assert.equal(c.d1_databases[0].migrations_dir,path.join(await fs.realpath(dir),'drizzle'));
  assert.deepEqual(c.triggers.crons,['* * * * *']);assert.equal((await fs.stat(file)).mode&0o777,0o600);
+ assert.equal(c.observability.head_sampling_rate,0.05);
+ const base={main:'index.js',assets:{directory:'../client'},legacy_env:true};
+ for(const [key,value] of [['r2_buckets',[{binding:'FILES',bucket_name:'not-allowed'}]],['queues',{producers:[{binding:'Q',queue:'not-allowed'}]}],['ai',{binding:'AI'}],['browser',{binding:'BROWSER'}],['services',[{binding:'OTHER',service:'other'}]],['usage_model','bundled']]){await fs.writeFile(path.join(dir,'dist/server/wrangler.json'),JSON.stringify({...base,[key]:value}));assert.equal(run({}).status,1,'Free-only deployment must reject '+key);}
+ await fs.writeFile(path.join(dir,'dist/server/wrangler.json'),JSON.stringify({...base,queues:{producers:[],consumers:[]},durable_objects:{bindings:[]}}));
+ assert.equal(run({}).status,0,'Wrangler-normalized empty bindings must remain valid');
  console.log('PASS: Konfiguration ohne Deployment, private Datei, vorhandenes Ziel, DB/Assets/Anmeldung/Cron, keine Platzhalter und keine doppelten Teamadressen');
 }finally{await fs.rm(dir,{recursive:true,force:true});}

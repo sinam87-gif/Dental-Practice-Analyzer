@@ -9,7 +9,16 @@ if(!Array.isArray(settings.emails)||settings.emails.length!==3||new Set(settings
 if(settings.authMode&&settings.authMode!=='password')throw Error('Diese Freigabe verwendet die bestehende private Teamanmeldung');
 if(settings.bucketName)throw Error('Diese Freigabe verwendet D1-Dateiablage; kein R2-Abonnement vorgesehen');
 const config=JSON.parse(await fs.readFile('dist/server/wrangler.json','utf8'));
-Object.assign(config,{name:'praxis-search-app',account_id:settings.accountId,workers_dev:true,preview_urls:false,d1_databases:[{binding:'DB',database_name:'praxis-search-app',database_id:settings.databaseId,migrations_dir:path.resolve('drizzle')}],r2_buckets:[],triggers:{crons:['* * * * *']},services:[],vars:{...config.vars,DEPLOYMENT_MODE:'cloudflare',TEAM_AUTH_MODE:'password',PLATFORM_EMAIL_DELIVERY:'disabled',PLATFORM_SEARCH_ENABLED:settings.searchEnabled===true?'true':'false',ACCESS_TEAM_DOMAIN:'',ACCESS_AUD:'',TEAM_EMAILS:settings.emails.join(',')},assets:{...config.assets,binding:'ASSETS',run_worker_first:true},observability:{enabled:true}});
+// This app deliberately supports Workers + D1 only. Refuse inherited paid/extra bindings.
+const configured=value=>Array.isArray(value)?value.some(configured):value&&typeof value==='object'?Object.values(value).some(configured):Boolean(value);
+for(const key of ['r2_buckets','kv_namespaces','queues','durable_objects','workflows','hyperdrive','vectorize','ai','browser','images','pipelines','analytics_engine_datasets','tail_consumers','logfwdr','services','unsafe','dispatch_namespaces','send_email','mtls_certificates']){
+ if(configured(config[key]))throw Error('Free-only-Konfiguration: zusätzliche Bindung nicht erlaubt: '+key);
+}
+if(config.logpush)throw Error('Kostenpflichtiger Logpush nicht erlaubt');
+if(config.usage_model&&config.usage_model!=='standard')throw Error('Legacy-/kostenpflichtiges Nutzungsmodell nicht erlaubt');
+if(settings.freeOnly===false)throw Error('Diese App unterstützt nur den geprüften Free-Betrieb');
+
+Object.assign(config,{name:'praxis-search-app',account_id:settings.accountId,workers_dev:true,preview_urls:false,d1_databases:[{binding:'DB',database_name:'praxis-search-app',database_id:settings.databaseId,migrations_dir:path.resolve('drizzle')}],r2_buckets:[],triggers:{crons:['* * * * *']},services:[],vars:{...config.vars,DEPLOYMENT_MODE:'cloudflare',TEAM_AUTH_MODE:'password',PLATFORM_EMAIL_DELIVERY:'disabled',PLATFORM_SEARCH_ENABLED:settings.searchEnabled===true?'true':'false',ACCESS_TEAM_DOMAIN:'',ACCESS_AUD:'',TEAM_EMAILS:settings.emails.join(',')},assets:{...config.assets,binding:'ASSETS',run_worker_first:true},observability:{enabled:true,head_sampling_rate:0.05}});
 delete config.legacy_env;
 await fs.writeFile('dist/server/cloudflare.wrangler.json',JSON.stringify(config,null,2),{mode:0o600});
 await fs.chmod('dist/server/cloudflare.wrangler.json',0o600);
