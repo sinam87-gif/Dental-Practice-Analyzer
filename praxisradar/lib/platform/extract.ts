@@ -1,4 +1,5 @@
-import {load} from 'cheerio/slim';import {roomCount,employedCount} from './counts';import {germanNumber,extractOffer} from '../import-offer';import type {PublicListing,Source,Evidence} from './types';
+import {newScan,scanPart,SCAN_CHARS,MAX_CARD_CHARS,type ScanState} from './stream';
+import {load} from 'cheerio/slim';import {roomCount,employedCount} from './counts';import {germanNumber,extractOffer,type ImportSection,type ImportResult} from '../import-offer';import type {PublicListing,Source,Evidence} from './types';
 export type PageItem={url:string,key:string,html?:string,title?:string,city?:string};
 export function publicText(html:string){const $=load(html);$('script,style,noscript,iframe,form,nav,footer,aside').remove();$('br').replaceWith('\n');$('p,div,li,tr,h1,h2,h3,h4,dt,dd').append('\n');return {text:($('main').length?$('main').text():$('body').length?$('body').text():$.root().text()).replace(/[ \t\u00a0]+/g,' ').replace(/\n\s*\n/g,'\n').trim().slice(0,80000),$};}
 export function pageItems(source:Source,html:string,url:string):{items:PageItem[],next:string[]}{const $=load(html),items:PageItem[]=[];
@@ -8,20 +9,44 @@ export function pageItems(source:Source,html:string,url:string):{items:PageItem[
  const next:string[]=[];$('a[rel="next"],a').each((_,el)=>{const a=$(el);if(a.attr('rel')!=='next'&&!/^(?:Weiter|Nächste(?: Seite)?|Next|›|»)$/.test(a.text().trim()))return;try{const target=new URL(a.attr('href')!,url);if(target.hostname===new URL(url).hostname&&target.pathname===new URL(url).pathname)next.push(target.href)}catch{}});
  return {items:[...new Map(items.map(i=>[i.key,i])).values()],next:[...new Set(next)]};}
 function dateValue(text:string):string|null{const m=text.match(/(?:Veröffentlicht(?: am)?|Inseratsdatum|Angebotsdatum|Eingestellt(?: am)?)\s*[:\n]?\s*(\d{1,2})\.(\d{1,2})\.(\d{4})/i);if(!m)return null;const iso=m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');const date=new Date(iso+'T12:00:00Z');return Number.isFinite(date.getTime())&&date.toISOString().startsWith(iso)&&date.getTime()<=Date.now()+86400000?iso:null;}
-export function prepareListing(source:Source,item:PageItem,html:string){
+export function readListingDocument(source:Source,item:PageItem,html:string){
  const {text,$}=publicText(html);if(text.length<60||!/zahn(?:arzt|ärzt|medizin|heil)|dental|\bKFO\b|\bMKG\b/i.test(text))return null;
- const parsed=extractOffer(text,item.url,item.url),heading=$('h1,h2,h3').first().text().replace(/\s+/g,' ').trim();
+ const heading=$('h1,h2,h3').first().text().replace(/\s+/g,' ').trim();
  const email=$('a[href^="mailto:"]').first().attr('href')?.slice(7).split('?')[0]||text.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i)?.[0]||null;
  const phone=$('a[href^="tel:"]').first().attr('href')?.slice(4)||text.match(/(?:Telefon|Tel\.?|Mobil)\s*:?\s*([+\d][\d ()/.-]{6,30}\d)/i)?.[1]||null;
  const name=text.match(/(?:Kontaktperson|Ansprechpartner(?:in)?)\s*:\s*([^\n]{3,80})/i)?.[1]||null;
- return {text,parsed,heading,email,phone,name,dateAttribute:$('time[datetime]').first().attr('datetime')||null};
+ return {text,heading,email,phone,name,dateAttribute:$('time[datetime]').first().attr('datetime')||null};
 }
+export function parseListingDocument(item:PageItem,document:NonNullable<ReturnType<typeof readListingDocument>>&{parsed?:ImportResult},section?:ImportSection){if(document.parsed?.offer.title==='Mehrere Angebote im Dokument')return {...document,parsed:document.parsed};return {...document,parsed:extractOffer(document.text,item.url,item.url,{section,previous:document.parsed})};}
+/** The automatic pipeline never builds a DOM for a complete card or page. */
+export function readCompactListingDocument(source:Source,item:PageItem,html:string){
+ if(html.length>MAX_CARD_CHARS)throw Error('Inseratsabschnitt überschreitet das Parserbudget');
+ let state=newScan();for(let offset=0;offset<html.length;offset+=SCAN_CHARS){state=scanPart(source,item.url,state,html.slice(offset,offset+SCAN_CHARS),true,offset+SCAN_CHARS>=html.length,false).state;}
+ return documentFromScan(source,item,state);
+}
+export function documentFromScan(source:Source,item:PageItem,state:ScanState){
+ const text=decodeText(state.text).replace(/[ \t\u00a0]+/g,' ').replace(/\n\s*\n/g,'\n').trim();
+ if(text.length<60||!/zahn(?:arzt|ärzt|medizin|heil)|dental|\bKFO\b|\bMKG\b/i.test(text))return null;
+ const email=text.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i)?.[0]||null;
+ const phone=text.match(/(?:Telefon|Tel\.?|Mobil)\s*:?\s*([+\d][\d ()/.-]{6,30}\d)/i)?.[1]||null;
+ const name=text.match(/(?:Kontaktperson|Ansprechpartner(?:in)?)\s*:\s*([^\n]{3,80})/i)?.[1]||null;
+ return {text,heading:decodeText(state.heading).replace(/\s+/g,' ').trim(),email,phone,name,dateAttribute:state.dateAttribute||null,truncated:state.truncated};
+}
+const decodeText=(value:string)=>value.replace(/&(#x[0-9a-fA-F]+|#\d+|amp|lt|gt|quot|apos|nbsp|auml|ouml|uuml|Auml|Ouml|Uuml|szlig|euro|ndash|mdash|thinsp|ensp|emsp);/g,(all,name)=>{if(name[0]==='#'){const n=name[1]==='x'?parseInt(name.slice(2),16):Number(name.slice(1));return n>0&&n<=0x10ffff?String.fromCodePoint(n):all;}return ({amp:'&',lt:'<',gt:'>',quot:'"',apos:"'",nbsp:' ',auml:'ä',ouml:'ö',uuml:'ü',Auml:'Ä',Ouml:'Ö',Uuml:'Ü',szlig:'ß',euro:'€',ndash:'–',mdash:'—',thinsp:' ',ensp:' ',emsp:' '} as Record<string,string>)[name]||all;});
+const simpleText=(value:string)=>decodeText(value.replace(/<[^>]*>/g,' ')).replace(/\s+/g,' ').trim();
+export function cardItem(source:Source,html:string,url:string):PageItem|null{
+ const root=html.match(/^\s*<div\b[^>]{0,4096}>/i)?.[0],id=root?.match(/\bid\s*=\s*["']([^"']+)["']/i)?.[1];if(!id)return null;
+ if(source.adapter==='dentoffert'){const title=simpleText(html.match(/<h3\b[^>]*>([\s\S]{0,2000}?)<\/h3>/i)?.[1]||'');if(!/^listing-\d+$/.test(id)||!/^Biete\s+Praxis/i.test(title))return null;return {url:new URL('/inserate/single/'+id.replace('listing-',''),url).href,key:id,title};}
+ if(source.adapter==='rlp'){const headings=[...html.matchAll(/<h1\b[^>]*>([\s\S]{0,2000}?)<\/h1>/gi)].map(m=>simpleText(m[1]));if(!headings.includes('Praxisdaten'))return null;const city=headings[0];return {url:url+'#'+id,key:id,city:city||undefined,title:city?city+' · Praxisabgabe':undefined};}
+ return null;
+}
+export function prepareListing(source:Source,item:PageItem,html:string){const document=readListingDocument(source,item,html);return document?parseListingDocument(item,document):null;}
 export type PreparedListing=NonNullable<ReturnType<typeof prepareListing>>;
 export function extractListing(source:Source,item:PageItem,html:string,observedAt=new Date().toISOString(),prepared?:PreparedListing):PublicListing|null{
  const document=prepared||prepareListing(source,item,html);if(!document)return null;const {text,parsed,heading,email,phone,name}=document;const sold=/\b(?:bereits verkauft|Status\s*:\s*verkauft|nicht mehr verfügbar)\b/i.test(text);
  if(!/übernahm|übernehm|verkauf|praxisabgab|nachfolg|abzugeben|miteinstieg|beteiligung/i.test(text+' '+(source.adapter==='rlp'?'Praxisabgabe':'')))return null;
  if(/^\s*Suche\s+(?:eine?\s+)?Praxis/i.test(item.title||''))return null;const o=parsed.offer;if(o.title==='Mehrere Angebote im Dokument'||o.kind==='Neugründung'||/reine?\s+(?:Praxis)?räume|nur\s+(?:Praxis)?räume|Neugründungsfläche/i.test(text))return null;
- o.title=(item.title||heading||o.title||'Zahnarztpraxis · '+source.name).slice(0,300);o.city=item.city||o.city||'Unbekannt';o.url=item.url;o.kind=/beteiligung|miteinstieg|praxisanteil/i.test(text)?'Beteiligung':'Übernahme';o.stage='inbox';
+ o.title=(item.title||heading||o.title||'Zahnarztpraxis · '+source.name).slice(0,300);o.city=item.city||o.city||'Unbekannt';o.url=item.url;o.kind=/beteiligung|miteinstieg|praxisanteil/i.test(text)?'Beteiligung':'Übernahme';o.stage='inbox';o.checkedAt=observedAt;
 
  const evidence:Evidence[]=parsed.findings.map(f=>({field:f.field,value:(o as any)[f.field],quote:f.quote.slice(0,240),url:item.url,observedAt})).filter(e=>e.value!==null&&e.value!==undefined);
 

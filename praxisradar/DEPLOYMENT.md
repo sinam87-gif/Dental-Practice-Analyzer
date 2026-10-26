@@ -47,3 +47,11 @@ Vor dem Wechsel private D1-Sicherung erstellen und Migrationen mit dem bestehend
 Erst nach ausdruecklicher Deployment-Freigabe den vorhandenen Worker mit dem Repository verbinden, den Produktionsbranch bewusst waehlen und die privaten Build-Variablen konfigurieren. Keine neue App und keine neue Datenbank erstellen. Builds mit Teamwerten nicht als oeffentliche Artefakte hochladen.
 
 Die Statuszusammenfassung zeigt Teilerfolge und Fehler getrennt an. Aeltere irrefuehrende Statuswerte werden nur beim Lesen normalisiert, ohne Daten umzuschreiben. Suchwege und Filter bleiben unveraendert. Ein erfolgreicher Build beweist keine vollstaendige Marktabdeckung.
+
+## Korrekturen nach der Free-Prüfung (lokal, noch keine Produktionsfreigabe)
+
+- `scripts/prepare-cloudflare-deploy.mjs` setzt den absoluten `drizzle`-Migrationspfad. Keine manuelle Nachkorrektur der generierten Datei mehr nötig.
+- Die private Eingabe akzeptiert `searchEnabled: true`. Ohne diese ausdrückliche Aktivierung erzeugt der Generator `PLATFORM_SEARCH_ENABLED=false`; Suchstarts und Cron bleiben angehalten. Keine privaten Einstellungen in GitHub schreiben.
+- Zusätzlich zu 0003/0004 müssen vor einer späteren Veröffentlichung die lokal geprüften Migrationen 0005/0006 ausdrücklich freigegeben werden. 0005 fügt eine Spalte, Tabellen, Indizes und atomare Speicherbudgettrigger hinzu; 0006 speichert die täglichen Aufträge. Kein DROP und keine Entfernung bestehender Angebote oder Dateien. Nicht auf Produktion anwenden, bevor Sicherung und Freigabe vorliegen.
+- Verwende für lokale Migrationstests dieselbe paketierte Wrangler-/Miniflare-Version wie die Vorschau. Das separate neuere Cloudflare-Werkzeug kann eine inkompatible lokale workerd-SQLite-Metadatenstruktur erzeugen. Keine Dependencies über den bestehenden node_modules-Symlink installieren.
+- Neue CPU-Messungen auf Cloudflare sind weiterhin erforderlich. Die früheren Messungen betreffen einen älteren Code. Diese Korrekturen enthalten keinen produktiven Suchlauf und keine kostenpflichtige Aktivierung.

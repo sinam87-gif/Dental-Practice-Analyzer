@@ -1,4 +1,4 @@
-import {fetchPublicResource} from '../fetch-offer';import {robotsRule,restrictedContent} from './robots';import {SearchRepository} from './repository';import type {Source} from './types';
+import {fetchPublicResource} from '../public-resource';import {robotsRule,restrictedContent} from './robots';import {SearchRepository} from './repository';import type {Source} from './types';
 export class DeferredAccess extends Error{constructor(public until:number){super('Quelle wird schonend später fortgesetzt');}}
 export class PublicAccess{
  requests=0;dnsCache=new Set<string>();authorized=new Set<string>();

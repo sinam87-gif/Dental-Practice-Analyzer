@@ -2,7 +2,7 @@ export type CountFact={value:number|null,quote:string|null};
 const words:Record<string,number>={null:0,kein:0,keine:0,keinen:0,ein:1,eine:1,einen:1,einem:1,eins:1,zwei:2,drei:3,vier:4,fünf:5,fuenf:5,sechs:6,sieben:7,acht:8,neun:9,zehn:10,elf:11,zwölf:12,zwoelf:12,dreizehn:13,vierzehn:14,fünfzehn:15,sechzehn:16,siebzehn:17,achtzehn:18,neunzehn:19,zwanzig:20};
 const n='(?:\\d{1,2}|'+Object.keys(words).join('|')+')';
 const number=(s:string)=>/^\d+$/.test(s)?Number(s):words[s.toLocaleLowerCase('de-DE')];
-const rangeBefore=new RegExp(n+'\\s*(?:-|–|bis)\\s*$','i');
+const rangeBefore=new RegExp(n+'\\s*(?:-|–|—|bis)\\s*$','i');
 const future=/(?:geplant|potenzial|erweiterbar|erweiterung|bis zu|auf|für|zusätzlich|weitere)\s*(?::|von)?\s*$/i;
 function unique(matches:{value:number,quote:string}[]):CountFact{const values=[...new Set(matches.map(m=>m.value))];return values.length===1?{value:values[0],quote:matches[0].quote}:{value:null,quote:null};}
 export function roomCount(text:string):CountFact{

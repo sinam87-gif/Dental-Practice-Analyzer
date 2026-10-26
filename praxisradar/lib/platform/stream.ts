@@ -2,7 +2,7 @@ import type {Source} from './types';
 export const SCAN_CHARS=4096,STORE_CHARS=32768,MAX_FACT_CHARS=16000,MAX_CARD_CHARS=24000;
 type Frame={tag:string,ignored:boolean};
 type Capture={depth:number,html:string,nested:boolean,truncated:boolean};
-export type ScanState={offset:number,pending:string,raw:string,frames:Frame[],captures:Capture[],link:{href:string,rel:string,text:string}|null,text:string,heading:string,headingDepth:number,main:boolean,truncated:boolean};
+export type ScanState={offset:number,pending:string,raw:string,frames:Frame[],captures:Capture[],link:{href:string,rel:string,text:string}|null,text:string,heading:string,headingDepth:number,dateAttribute?:string,main:boolean,truncated:boolean};
 export type ScanOutput={kind:'card',html:string}|{kind:'link'|'next',url:string,title:string};
 export const newScan=():ScanState=>({offset:0,pending:'',raw:'',frames:[],captures:[],link:null,text:'',heading:'',headingDepth:0,main:false,truncated:false});
 const voids=new Set(['area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr']);
@@ -14,11 +14,11 @@ function tagEnd(s:string,start:number){let quote='';for(let i=start+1;i<s.length
 /** Bounded lexical pass: at most SCAN_CHARS new characters, no DOM of a whole page.
  * Persistent state makes tag/comment/script boundaries survive invocations.
  * HTML fragments are subsequently validated by the existing source adapter. */
-export function scanPart(source:Source,url:string,state:ScanState,part:string,detail:boolean,final=false){
+export function scanPart(source:Source,url:string,state:ScanState,part:string,detail:boolean,final=false,emitHTML=true){
  if(part.length>SCAN_CHARS)throw Error('Parser-Arbeitsschritt zu groß');
  const outputs:ScanOutput[]=[],s=state.pending+part;state.pending='';state.offset+=part.length;let pos=0;
  const isIgnored=()=>state.frames.at(-1)?.ignored??false;
- const add=(value:string)=>{if(isIgnored())return;for(const c of state.captures){if(c.html.length+value.length>MAX_CARD_CHARS)c.truncated=true;c.html=(c.html+value).slice(0,MAX_CARD_CHARS);}};
+ const add=(value:string)=>{if(isIgnored())return;for(const c of state.captures){if(c.nested)continue;if(c.html.length+value.length>MAX_CARD_CHARS)c.truncated=true;c.html=(c.html+value).slice(0,MAX_CARD_CHARS);}};
  const text=(value:string)=>{if(isIgnored())return;add(value);if(state.link)state.link.text=(state.link.text+value).slice(0,600);if(detail&&(!state.main||state.frames.some(f=>f.tag==='main'))){if(state.text.length+value.length>MAX_FACT_CHARS)state.truncated=true;state.text=(state.text+value).slice(0,MAX_FACT_CHARS);if(state.headingDepth)state.heading=(state.heading+value).slice(0,500);}};
  const endLink=()=>{const a=state.link;state.link=null;if(!a)return;try{const u=new URL(a.href,url),base=new URL(source.url),title=a.text.replace(/\s+/g,' ').trim();if(u.protocol!=='https:'||u.hostname.replace(/^www\./,'')!==base.hostname.replace(/^www\./,''))return;if(a.rel.split(/\s+/).includes('next')||/^(?:Weiter|Nächste(?: Seite)?|Next|›|»)$/.test(title)){if(u.pathname===new URL(url).pathname)outputs.push({kind:'next',url:u.href,title});}if(new RegExp(source.detailPattern,'i').test(u.pathname)&&!/login|register|anmeld|securedl|captcha/i.test(u.href))outputs.push({kind:'link',url:u.href,title});}catch{}};
  while(pos<s.length){
@@ -33,9 +33,10 @@ export function scanPart(source:Source,url:string,state:ScanState,part:string,de
   const skip=isIgnored()||(ignored.has(tag)&&!(!detail&&['nav','footer'].includes(tag)));if(tag==='main'&&detail&&!state.main){state.main=true;state.text='';state.heading='';}
   if(!skip&&!detail&&tag==='div'){
    const cls=attr(token,'class'),id=attr(token,'id'),card=source.adapter==='dentoffert'&&/\bcard-listing\b/.test(cls)&&/^listing-\d+$/.test(id)||source.adapter==='rlp'&&/\bkzv-colwrap\b/.test(cls)&&!!id;
-   if(card){for(const c of state.captures)c.nested=true;state.captures.push({depth:state.frames.length+1,html:'',nested:false,truncated:false});}
+   if(card){for(const c of state.captures){c.nested=true;c.html='';}state.captures.push({depth:state.frames.length+1,html:'',nested:false,truncated:false});}
   }
-  if(!skip){add(token);if(tag==='a'){
+  if(!skip){if(detail&&tag==='time'&&!state.dateAttribute){const value=attr(token,'datetime');if(/^\d{4}-\d{2}-\d{2}/.test(value))state.dateAttribute=value.slice(0,40);}
+   add(token);if(tag==='a'){
     if(detail){const href=attr(token,'href');if(/^(?:mailto:|tel:)/i.test(href)&&!state.text.includes(href)){state.text=(state.text+'\n'+(/mailto:/i.test(href)?'E-Mail: ':'Telefon: ')+href.replace(/^(?:mailto:|tel:)/i,'').split('?')[0]+'\n').slice(0,MAX_FACT_CHARS);}}
     else{if(state.link)endLink();state.link={href:attr(token,'href'),rel:attr(token,'rel'),text:''};}}
    if(detail&&blocks.has(tag))text('\n');
@@ -44,5 +45,5 @@ export function scanPart(source:Source,url:string,state:ScanState,part:string,de
   if(!voids.has(tag)&&!token.endsWith('/>')){if(state.frames.length>=128)throw Error('HTML-Verschachtelung zu tief');state.frames.push({tag,ignored:skip});}
  }
  if(final){if(state.pending&&!state.raw&&!state.pending.startsWith('<'))text(state.pending);state.pending='';if(state.link)endLink();}
- return {state,outputs,html:detail&&final?'<main><h1>'+escape(state.heading)+'</h1><p>'+state.text+'</p></main>':undefined};
+ return {state,outputs,html:detail&&final&&emitHTML?'<main>'+(state.dateAttribute?'<time datetime="'+escape(state.dateAttribute)+'"></time>':'')+'<h1>'+state.heading.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</h1><p>'+state.text+'</p></main>':undefined};
 }

@@ -36,6 +36,20 @@
       "when": 1792851744491,
       "tag": "0004_lush_black_tom",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1792865267224,
+      "tag": "0005_free_runtime_controls",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1792866087387,
+      "tag": "0006_daily_schedule",
+      "breakpoints": true
     }
   ]
 }
